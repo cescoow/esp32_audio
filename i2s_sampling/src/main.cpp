@@ -12,10 +12,6 @@ HTTPClient *httpClientI2S = NULL;
 ADCSampler *adcSampler = NULL;
 I2SSampler *i2sSampler = NULL;
 
-// replace this with your machines IP Address
-#define ADC_SERVER_URL "http://192.168.1.72:5003/adc_samples"
-#define I2S_SERVER_URL "http://192.168.1.72:5003/i2s_samples"
-
 // i2s config for using the internal ADC
 i2s_config_t adcI2SConfig = {
     .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_ADC_BUILT_IN),
@@ -36,6 +32,8 @@ i2s_config_t i2sMemsConfigLeftChannel = {
     .sample_rate = 16000,
     .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
     .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+
+    //.channel_format = I2S_STD_FORMAT,
     .communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S),
     .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
     .dma_buf_count = 4,
@@ -46,48 +44,23 @@ i2s_config_t i2sMemsConfigLeftChannel = {
 
 // i2s pins
 i2s_pin_config_t i2sPins = {
-    .bck_io_num = GPIO_NUM_32,
-    .ws_io_num = GPIO_NUM_25,
+    .bck_io_num = 18,
+    .ws_io_num = 19,
     .data_out_num = I2S_PIN_NO_CHANGE,
-    .data_in_num = GPIO_NUM_33};
+    .data_in_num = 21};
 
 // how many samples to read at once
-const int SAMPLE_SIZE = 16384;
+//const int SAMPLE_SIZE = 16384;
+const int SAMPLE_SIZE = 16000*2;
 
-// send data to a remote address
-void sendData(WiFiClient *wifiClient, HTTPClient *httpClient, const char *url, uint8_t *bytes, size_t count)
-{
-  // send them off to the server
-  digitalWrite(2, HIGH);
-  httpClient->begin(*wifiClient, url);
-  httpClient->addHeader("content-type", "application/octet-stream");
-  httpClient->POST(bytes, count);
-  httpClient->end();
-  digitalWrite(2, LOW);
-}
-
-// Task to write samples from ADC to our server
-void adcWriterTask(void *param)
-{
-  I2SSampler *sampler = (I2SSampler *)param;
-  int16_t *samples = (int16_t *)malloc(sizeof(uint16_t) * SAMPLE_SIZE);
-  if (!samples)
-  {
-    Serial.println("Failed to allocate memory for samples");
-    return;
-  }
-  while (true)
-  {
-    int samples_read = sampler->read(samples, SAMPLE_SIZE);
-    sendData(wifiClientADC, httpClientADC, ADC_SERVER_URL, (uint8_t *)samples, samples_read * sizeof(uint16_t));
-  }
-}
 
 // Task to write samples to our server
 void i2sMemsWriterTask(void *param)
 {
   I2SSampler *sampler = (I2SSampler *)param;
   int16_t *samples = (int16_t *)malloc(sizeof(uint16_t) * SAMPLE_SIZE);
+  //int16_t *samples2 = (int16_t *)malloc(sizeof(uint16_t) * SAMPLE_SIZE);
+
   if (!samples)
   {
     Serial.println("Failed to allocate memory for samples");
@@ -96,33 +69,52 @@ void i2sMemsWriterTask(void *param)
   while (true)
   {
     int samples_read = sampler->read(samples, SAMPLE_SIZE);
-    sendData(wifiClientI2S, httpClientI2S, I2S_SERVER_URL, (uint8_t *)samples, samples_read * sizeof(uint16_t));
+    int sum_read = 0;
+    for (int16_t i = 0; i <= samples_read; i++){
+      /*if (samples[i]<=0){
+        samples[i] = samples[i]*-1;
+        sum_read = sum_read + samples[i];
+      }
+      if (samples[i]<=(sum_read/samples_read)*10){
+        samples[i] = 0;
+      }
+      */
+
+      Serial.println(samples[i]);
+
+    }
+    Serial.println(samples_read);
+    //sendData(wifiClientI2S, httpClientI2S, I2S_SERVER_URL, (uint8_t *)samples, samples_read * sizeof(uint16_t));
   }
 }
 
 void setup()
 {
-  Serial.begin(115200);
+  Serial.begin(115200*2);
   // launch WiFi
-  Serial.printf("Connecting to WiFi");
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(SSID, PASSWORD);
-  while (WiFi.waitForConnectResult() != WL_CONNECTED)
+  //Serial.printf("Connecting to WiFi");
+  //WiFi.mode(WIFI_STA);
+  //WiFi.begin(SSID, PASSWORD);
+  /*while (WiFi.waitForConnectResult() != WL_CONNECTED)
   {
     Serial.print(".");
     delay(1000);
   }
+  
   Serial.println("");
   Serial.println("WiFi Connected");
   Serial.println("Started up");
+  */
   // indicator LED
   pinMode(2, OUTPUT);
-  // setup the HTTP Client
+
+  /* setup the HTTP Client
   wifiClientADC = new WiFiClient();
   httpClientADC = new HTTPClient();
 
   wifiClientI2S = new WiFiClient();
   httpClientI2S = new HTTPClient();
+  */
 
   // input from analog microphones such as the MAX9814 or MAX4466
   // internal analog to digital converter sampling using i2s
