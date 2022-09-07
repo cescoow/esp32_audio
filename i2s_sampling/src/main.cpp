@@ -47,7 +47,7 @@ i2s_pin_config_t i2sPins = {
     .bck_io_num = 18,
     .ws_io_num = 19,
     .data_out_num = I2S_PIN_NO_CHANGE,
-    .data_in_num = 21};
+    .data_in_num = 23};
 
 // how many samples to read at once
 //const int SAMPLE_SIZE = 16384;
@@ -84,56 +84,19 @@ void i2sMemsWriterTask(void *param)
 
     }
     Serial.println(samples_read);
-    //sendData(wifiClientI2S, httpClientI2S, I2S_SERVER_URL, (uint8_t *)samples, samples_read * sizeof(uint16_t));
   }
 }
 
 void setup()
 {
   Serial.begin(115200*2);
-  // launch WiFi
-  //Serial.printf("Connecting to WiFi");
-  //WiFi.mode(WIFI_STA);
-  //WiFi.begin(SSID, PASSWORD);
-  /*while (WiFi.waitForConnectResult() != WL_CONNECTED)
-  {
-    Serial.print(".");
-    delay(1000);
-  }
-  
-  Serial.println("");
-  Serial.println("WiFi Connected");
-  Serial.println("Started up");
-  */
-  // indicator LED
   pinMode(2, OUTPUT);
-
-  /* setup the HTTP Client
-  wifiClientADC = new WiFiClient();
-  httpClientADC = new HTTPClient();
-
-  wifiClientI2S = new WiFiClient();
-  httpClientI2S = new HTTPClient();
-  */
-
-  // input from analog microphones such as the MAX9814 or MAX4466
-  // internal analog to digital converter sampling using i2s
-  // create our samplers
-  // adcSampler = new ADCSampler(ADC_UNIT_1, ADC1_CHANNEL_7, adcI2SConfig);
-
-  // set up the adc sample writer task
-  // TaskHandle_t adcWriterTaskHandle;
-  // adcSampler->start();
-  // xTaskCreatePinnedToCore(adcWriterTask, "ADC Writer Task", 4096, adcSampler, 1, &adcWriterTaskHandle, 1);
-
   // Direct i2s input from INMP441 or the SPH0645
   i2sSampler = new I2SMEMSSampler(I2S_NUM_0, i2sPins, i2sMemsConfigLeftChannel, false);
   i2sSampler->start();
   // set up the i2s sample writer task
   TaskHandle_t i2sMemsWriterTaskHandle;
   xTaskCreatePinnedToCore(i2sMemsWriterTask, "I2S Writer Task", 4096, i2sSampler, 1, &i2sMemsWriterTaskHandle, 1);
-
-  // // start sampling from i2s device
 }
 
 void loop()
